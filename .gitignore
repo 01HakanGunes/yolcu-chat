@@ -1,0 +1,4 @@
+node_modules/
+.env
+google-services.json
+eas.json
