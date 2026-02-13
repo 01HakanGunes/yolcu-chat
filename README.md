@@ -1,7 +1,7 @@
-<div align="center">
-  <img src="docs/assets/screenshots/logo.svg" alt="Yolcu Chat Logo" width="100" height="100" />
-  <h1>Yolcu Chat</h1>
-</div>
+<h1>
+  <img src="docs/assets/screenshots/logo.svg" width="64" height="64" style="vertical-align: middle; margin-right: 10px;" />
+  <span style="vertical-align: middle;">Yolcu Chat</span>
+</h1>
 
 This mobile app is a dedicated platform designed for building communities around specific interests. It streamlines the creation of hobby-based chat rooms, providing a focused space where enthusiasts can connect and share their passions in real time. By removing the clutter of general social networking, the app ensures that every conversation is centered on the hobbies that matter most to its users.
 
