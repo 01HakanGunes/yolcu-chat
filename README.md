@@ -5,6 +5,23 @@
 
 This mobile app is a dedicated platform designed for building communities around specific interests. It streamlines the creation of hobby-based chat rooms, providing a focused space where enthusiasts can connect and share their passions in real time. By removing the clutter of general social networking, the app ensures that every conversation is centered on the hobbies that matter most to its users.
 
+## ✨ Features
+
+### Core Capabilities
+
+- **Hobby-Based Chat Rooms:** Create and join rooms dedicated specifically to your interests and hobbies.
+- **Real-Time Messaging:** Instant communication powered by Supabase Realtime for seamless interaction.
+- **Push Notifications:** Stay updated with new messages and activity via integrated cross-platform notifications.
+- **Room Management:** Full control to create rooms and customize settings for your community.
+- **User Profiles:** Personalized identities to connect with like-minded individuals.
+
+### Future Enhancements
+
+- **Media Sharing:** Capability to share photos and videos directly within chat rooms to showcase hobby projects.
+- **Event Scheduling:** Tools for organizing meetups or scheduled hobby sessions within room communities.
+- **Advanced Moderation:** Expanded roles and permissions for community leaders to manage discussions.
+- **Interest Matching:** Smart suggestions for new rooms based on your selected interests and profile.
+
 ## 📸 Screenshots
 
 <p align="center">
