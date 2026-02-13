@@ -4,10 +4,9 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
@@ -82,10 +81,7 @@ export default function CreateRoomScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.content}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+      <KeyboardAvoidingView style={styles.content} behavior="padding">
         <ThemedText style={styles.label}>Room Name</ThemedText>
         <TextInput
           style={[

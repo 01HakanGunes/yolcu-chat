@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { View, ActivityIndicator, Alert } from "react-native";
 import * as Linking from "expo-linking";
 import "react-native-reanimated";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePushToken } from "@/hooks/use-push-token";
@@ -132,15 +133,20 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        {/* Main App (Tabs) */}
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    <KeyboardProvider>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <Stack>
+          {/* Main App (Tabs) */}
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
-        {/* Auth Screens (Login/Signup) - Hides the header automatically */}
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+          {/* Auth Screens (Login/Signup) */}
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+
+          {/* Chat Screens - has its own Stack with headers */}
+          <Stack.Screen name="(chat)" options={{ headerShown: false }} />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </KeyboardProvider>
   );
 }

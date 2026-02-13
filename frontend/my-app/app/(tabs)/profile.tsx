@@ -6,10 +6,9 @@ import {
   ActivityIndicator,
   Alert,
   View,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -227,10 +226,7 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Header / Avatar Section */}
           <View style={styles.headerContainer}>

@@ -5,19 +5,42 @@ Deno.serve(async (req)=>{
   try {
     const payload = await req.json();
     const { record } = payload;
-    // 1. Validation (Matches your Messages table)
-    if (!record?.user_id || !record?.content) {
-      return new Response("Invalid payload", {
+    // 1. Validation
+    // Added check for room_id
+    if (!record?.user_id || !record?.content || !record?.room_id) {
+      return new Response("Invalid payload: Missing user, content, or room_id", {
         status: 400
       });
     }
     const senderId = record.user_id;
     const messageText = record.content;
+    const roomId = record.room_id;
     const supabase = createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
-    // 2. Database Query (Matches your Push Tokens table)
-    const { data: tokens, error } = await supabase.from("push_tokens").select("token").neq("user_id", senderId); // Broadcast to everyone else
-    if (error || !tokens || tokens.length === 0) {
-      return new Response("No targets", {
+    // 2. Database Query (Targeted Room Logic)
+    // Step A: Find all user_ids in the room (excluding the sender)
+    const { data: members, error: memberError } = await supabase.from("room_members").select("user_id").eq("room_id", roomId).neq("user_id", senderId);
+    if (memberError) {
+      console.error("Error fetching room members:", memberError);
+      return new Response("Database error", {
+        status: 500
+      });
+    }
+    if (!members || members.length === 0) {
+      return new Response("No other members in this room", {
+        status: 200
+      });
+    }
+    const targetUserIds = members.map((m)=>m.user_id);
+    // Step B: Get tokens ONLY for those specific users
+    const { data: tokens, error: tokenError } = await supabase.from("push_tokens").select("token").in("user_id", targetUserIds);
+    if (tokenError) {
+      console.error("Error fetching tokens:", tokenError);
+      return new Response("Database error", {
+        status: 500
+      });
+    }
+    if (!tokens || tokens.length === 0) {
+      return new Response("No tokens found for targets", {
         status: 200
       });
     }
@@ -25,10 +48,11 @@ Deno.serve(async (req)=>{
     const messages = tokens.map((t)=>({
         to: t.token,
         sound: "default",
-        title: "New Group Message",
+        title: "New Message",
         body: messageText,
         data: {
-          senderId: senderId
+          senderId: senderId,
+          roomId: roomId
         }
       }));
     // 4. Send in Chunks of 100 (Expo Rule)
