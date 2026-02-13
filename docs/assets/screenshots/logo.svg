@@ -5,7 +5,7 @@
    viewBox="0 0 1024 1024"
    version="1.1"
    id="svg75"
-   sodipodi:docname="icon (Copy).svg"
+   sodipodi:docname="logo.svg"
    inkscape:version="1.4.3 (fcd0343856, 2026-01-01)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -21,7 +21,7 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:zoom="0.53240169"
-     inkscape:cx="324.94262"
+     inkscape:cx="325.88176"
      inkscape:cy="339.02973"
      inkscape:window-width="1920"
      inkscape:window-height="1003"
@@ -50,7 +50,7 @@
   </defs>
   <g
      id="g75"
-     transform="matrix(0.62833208,0,0,0.62833208,190.43277,190.32662)">
+     transform="matrix(0.94249812,0,0,0.94249812,29.649157,29.489928)">
     <path
        fill="#bb1b18"
        d="M 505.287,208.008 C 673.499,204.195 813.036,337.3 817.16,505.505 821.283,673.71 688.437,813.492 520.24,817.927 351.603,822.373 211.374,689.103 207.24,520.458 203.105,351.813 336.635,211.831 505.287,208.008 Z"
