@@ -1,6 +1,15 @@
-# Yolcu Chat
+# <img src="docs/assets/screenshots/logo.svg" width="48" height="48" /> Yolcu Chat
 
 This mobile app is a dedicated platform designed for building communities around specific interests. It streamlines the creation of hobby-based chat rooms, providing a focused space where enthusiasts can connect and share their passions in real time. By removing the clutter of general social networking, the app ensures that every conversation is centered on the hobbies that matter most to its users.
+
+## 📸 Screenshots
+
+<p align="center">
+  <img src="docs/assets/screenshots/rooms.jpeg" width="22%" alt="Rooms Screen" />
+  <img src="docs/assets/screenshots/chat.jpeg" width="22%" alt="Chat Screen" />
+  <img src="docs/assets/screenshots/room-settings.jpeg" width="22%" alt="Room Settings" />
+  <img src="docs/assets/screenshots/profile.jpeg" width="22%" alt="Profile Screen" />
+</p>
 
 ## 🚀 Tech Stack
 
