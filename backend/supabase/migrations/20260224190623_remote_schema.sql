@@ -59,6 +59,26 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
 
+CREATE OR REPLACE FUNCTION "public"."delete_room"("room_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  DELETE FROM public.rooms
+  WHERE id = delete_room.room_id
+  AND created_by = auth.uid();
+
+  -- Optional: Check if a row was actually deleted to inform the frontend
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Access Denied: You are not the creator or the room does not exist.';
+  END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."delete_room"("room_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."generate_room_code"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -128,6 +148,58 @@ end;$$;
 
 
 ALTER FUNCTION "public"."join_room_via_code"("code_input" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."kick_member"("room_id" "uuid", "target_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  -- Check if the executing user (auth.uid()) is the creator of the room
+  IF EXISTS (
+    SELECT 1 FROM public.rooms
+    WHERE id = kick_member.room_id
+    AND created_by = auth.uid()
+  ) THEN
+    -- If yes, remove the target user
+    DELETE FROM public.room_members
+    WHERE room_members.room_id = kick_member.room_id
+    AND room_members.user_id = kick_member.target_user_id;
+  ELSE
+    -- If no, raise an error (optional: you could also just do nothing)
+    RAISE EXCEPTION 'Access Denied: Only the room creator can kick members.';
+  END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."kick_member"("room_id" "uuid", "target_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."leave_room"("room_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  -- 1. Check if the user trying to leave is the Room Creator
+  IF EXISTS (
+    SELECT 1 FROM public.rooms
+    WHERE id = leave_room.room_id
+    AND created_by = auth.uid()
+  ) THEN
+    -- 2. If they are the creator, stop them and raise an error
+    RAISE EXCEPTION 'As the creator, you cannot leave this room. Please delete the room instead.';
+  END IF;
+
+  -- 3. If they are NOT the creator, remove them from the members list
+  DELETE FROM public.room_members
+  WHERE room_members.room_id = leave_room.room_id
+  AND room_members.user_id = auth.uid();
+END;
+$$;
+
+
+ALTER FUNCTION "public"."leave_room"("room_id" "uuid") OWNER TO "postgres";
 
 SET default_tablespace = '';
 
@@ -523,6 +595,12 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."delete_room"("room_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."delete_room"("room_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_room"("room_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."generate_room_code"() TO "anon";
 GRANT ALL ON FUNCTION "public"."generate_room_code"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."generate_room_code"() TO "service_role";
@@ -538,6 +616,18 @@ GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."join_room_via_code"("code_input" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."join_room_via_code"("code_input" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."join_room_via_code"("code_input" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."kick_member"("room_id" "uuid", "target_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."kick_member"("room_id" "uuid", "target_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."kick_member"("room_id" "uuid", "target_user_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."leave_room"("room_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."leave_room"("room_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."leave_room"("room_id" "uuid") TO "service_role";
 
 
 
@@ -676,15 +766,5 @@ using ((bucket_id = 'profile-pics'::text));
 using (((bucket_id = 'profile-pics'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)))
 with check (((bucket_id = 'profile-pics'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));
 
-
-CREATE TRIGGER objects_delete_delete_prefix AFTER DELETE ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.delete_prefix_hierarchy_trigger();
-
-CREATE TRIGGER objects_insert_create_prefix BEFORE INSERT ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.objects_insert_prefix_trigger();
-
-CREATE TRIGGER objects_update_create_prefix BEFORE UPDATE ON storage.objects FOR EACH ROW WHEN (((new.name <> old.name) OR (new.bucket_id <> old.bucket_id))) EXECUTE FUNCTION storage.objects_update_prefix_trigger();
-
-CREATE TRIGGER prefixes_create_hierarchy BEFORE INSERT ON storage.prefixes FOR EACH ROW WHEN ((pg_trigger_depth() < 1)) EXECUTE FUNCTION storage.prefixes_insert_trigger();
-
-CREATE TRIGGER prefixes_delete_hierarchy AFTER DELETE ON storage.prefixes FOR EACH ROW EXECUTE FUNCTION storage.delete_prefix_hierarchy_trigger();
 
 
