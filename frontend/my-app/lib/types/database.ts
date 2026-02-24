@@ -33,6 +33,10 @@ export interface Message {
   user_id: string;
   room_id: string;
   created_at: string;
+  file_path: string | null;
+  file_name: string | null;
+  file_type: string | null;
+  file_size: number | null;
 }
 
 export interface Database {
@@ -76,6 +80,10 @@ export interface Database {
         Insert: Omit<Message, "id" | "created_at"> & {
           id?: string;
           created_at?: string;
+          file_path?: string | null;
+          file_name?: string | null;
+          file_type?: string | null;
+          file_size?: number | null;
         };
         Update: Partial<Omit<Message, "id" | "created_at">>;
       };

@@ -17,11 +17,13 @@ import {
   Share,
   Alert,
   Platform,
+  Linking,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import * as DocumentPicker from "expo-document-picker";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -34,11 +36,85 @@ type MessageWithProfile = {
   user_id: string;
   room_id: string;
   created_at: string;
+  file_path: string | null;
+  file_name: string | null;
+  file_type: string | null;
+  file_size: number | null;
   profiles?: {
     display_name: string | null;
     avatar_url: string | null;
   } | null;
 };
+
+// --- FILE ATTACHMENT COMPONENT ---
+function FileAttachment({
+  filePath,
+  fileType,
+  fileName,
+  isOwn,
+  textColor,
+}: {
+  filePath: string;
+  fileType: string | null;
+  fileName: string | null;
+  isOwn: boolean;
+  textColor: string;
+}) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.storage
+      .from("chat-files")
+      .createSignedUrl(filePath, 3600)
+      .then(({ data }) => {
+        if (data) setSignedUrl(data.signedUrl);
+      });
+  }, [filePath]);
+
+  const isImage = fileType?.startsWith("image/");
+  const iconColor = isOwn ? "#fff" : textColor;
+
+  if (!signedUrl) {
+    return (
+      <ActivityIndicator
+        size="small"
+        color={iconColor}
+        style={{ marginVertical: 8 }}
+      />
+    );
+  }
+
+  if (isImage) {
+    return (
+      <TouchableOpacity onPress={() => Linking.openURL(signedUrl)}>
+        <Image
+          source={{ uri: signedUrl }}
+          style={styles.fileImage}
+          contentFit="cover"
+          transition={200}
+        />
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={styles.fileRow}
+      onPress={() => Linking.openURL(signedUrl)}
+    >
+      <Ionicons name="document-outline" size={22} color={iconColor} />
+      <View style={{ flex: 1 }}>
+        <ThemedText
+          style={[styles.fileName, isOwn && { color: "#fff" }]}
+          numberOfLines={2}
+        >
+          {fileName ?? "File"}
+        </ThemedText>
+      </View>
+      <Ionicons name="open-outline" size={16} color={iconColor} />
+    </TouchableOpacity>
+  );
+}
 
 export default function RoomScreen() {
   const { id: roomId } = useLocalSearchParams<{ id: string }>();
@@ -210,6 +286,52 @@ export default function RoomScreen() {
     setSending(false);
   };
 
+  const pickAndSendFile = async () => {
+    if (!userId || !roomId || sending) return;
+
+    const result = await DocumentPicker.getDocumentAsync({
+      copyToCacheDirectory: true,
+    });
+
+    if (result.canceled) return;
+
+    const file = result.assets[0];
+    setSending(true);
+
+    try {
+      const timestamp = Date.now();
+      const storagePath = `${roomId}/${userId}/${timestamp}_${file.name}`;
+
+      const response = await fetch(file.uri);
+      const arrayBuffer = await response.arrayBuffer();
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-files")
+        .upload(storagePath, arrayBuffer, {
+          contentType: file.mimeType ?? "application/octet-stream",
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { error: messageError } = await supabase.from("messages").insert({
+        content: "",
+        user_id: userId,
+        room_id: roomId,
+        file_path: storagePath,
+        file_name: file.name,
+        file_type: file.mimeType ?? "application/octet-stream",
+        file_size: file.size ?? null,
+      });
+
+      if (messageError) throw messageError;
+    } catch (err) {
+      console.error("Error sending file:", err);
+      Alert.alert("Error", "Failed to send file. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const renderMessage = ({ item }: { item: MessageWithProfile }) => {
     const isOwnMessage = item.user_id === userId;
 
@@ -258,15 +380,27 @@ export default function RoomScreen() {
             </ThemedText>
           )}
 
-          <ThemedText
-            style={[
-              styles.messageText,
-              // Fix: Force white text for own messages, standard theme text for others
-              isOwnMessage ? { color: "#ffffff" } : { color: textColor },
-            ]}
-          >
-            {item.content}
-          </ThemedText>
+          {item.content.length > 0 && (
+            <ThemedText
+              style={[
+                styles.messageText,
+                // Fix: Force white text for own messages, standard theme text for others
+                isOwnMessage ? { color: "#ffffff" } : { color: textColor },
+              ]}
+            >
+              {item.content}
+            </ThemedText>
+          )}
+
+          {item.file_path && (
+            <FileAttachment
+              filePath={item.file_path}
+              fileType={item.file_type}
+              fileName={item.file_name}
+              isOwn={isOwnMessage}
+              textColor={textColor}
+            />
+          )}
 
           <ThemedText
             style={[
@@ -315,6 +449,17 @@ export default function RoomScreen() {
         <View
           style={[styles.inputContainer, { backgroundColor: "transparent" }]}
         >
+          <TouchableOpacity
+            style={[styles.attachButton, { backgroundColor: inputBgColor }]}
+            onPress={pickAndSendFile}
+            disabled={sending}
+          >
+            <Ionicons
+              name="attach-outline"
+              size={22}
+              color={sending ? placeholderColor : myBubbleColor}
+            />
+          </TouchableOpacity>
           <TextInput
             style={[
               styles.input,
@@ -446,5 +591,29 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  attachButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fileImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  fileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+    maxWidth: 220,
+  },
+  fileName: {
+    fontSize: 13,
+    flexShrink: 1,
   },
 });

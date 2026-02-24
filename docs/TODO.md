@@ -28,3 +28,4 @@
 
 - [x] **Keyboard Overlap**: On some devices, keyboard overlaps input field.
 - [x] double back button appears on the chat screen
+- [ ] the file picker shows all file types instead of accepted ones this results error throwed when trying to upload unsupported files.
