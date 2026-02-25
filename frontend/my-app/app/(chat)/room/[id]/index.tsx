@@ -127,11 +127,13 @@ export default function RoomScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [roomName, setRoomName] = useState<string>("Chat");
+  const [isLive, setIsLive] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
+  const [liveActionLoading, setLiveActionLoading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   // --- THEME COLORS ---
   const textColor = useThemeColor({}, "text");
-  // We use a specific Gray for "Other" bubbles that works in both modes
   const otherBubbleColor = useThemeColor(
     { light: "#E5E5EA", dark: "#333333" },
     "background",
@@ -145,22 +147,55 @@ export default function RoomScreen() {
     "icon",
   );
 
-  // Safe Blue for "My Messages" (Ensures white text is always visible)
   const myBubbleColor = "#0a7ea4";
+  const liveColor = "#e63946";
 
   const fetchRoomDetails = useCallback(async () => {
     if (!roomId) return;
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const currentUserId = user?.id ?? null;
+
     const { data, error } = await supabase
       .from("rooms")
-      .select("name, invite_code")
+      .select("name, invite_code, is_live, created_by")
       .eq("id", roomId)
       .single();
 
     if (!error && data) {
       setRoomName(data.name);
       setInviteCode(data.invite_code);
+      setIsLive(data.is_live ?? false);
+      setIsCreator(data.created_by === currentUserId);
     }
+  }, [roomId]);
+
+  // Subscribe to is_live changes on this room so everyone sees the banner appear/disappear
+  const subscribeToLiveState = useCallback(() => {
+    if (!roomId) return () => {};
+
+    const channel = supabase
+      .channel(`room-live-${roomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "rooms",
+          filter: `id=eq.${roomId}`,
+        },
+        (payload) => {
+          const updated = payload.new as { is_live: boolean };
+          setIsLive(updated.is_live ?? false);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [roomId]);
 
   const shareInviteLink = useCallback(async () => {
@@ -182,12 +217,48 @@ export default function RoomScreen() {
     router.push(`/room/${roomId}/settings`);
   }, [router, roomId]);
 
-  // Set up header with share and settings buttons
+  const handleStartSession = useCallback(async () => {
+    setLiveActionLoading(true);
+    const { error } = await supabase.rpc("set_room_live", {
+      room_id: roomId,
+      live: true,
+    });
+    setLiveActionLoading(false);
+
+    if (error) {
+      Alert.alert("Error", "Could not start live session.");
+      return;
+    }
+    router.push(`/room/${roomId}/live`);
+  }, [roomId, router]);
+
+  const handleJoinSession = useCallback(() => {
+    router.push(`/room/${roomId}/live`);
+  }, [roomId, router]);
+
+  // Set up header with live, share and settings buttons
   useLayoutEffect(() => {
     navigation.setOptions({
       title: roomName,
       headerRight: () => (
         <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {isCreator && (
+            <TouchableOpacity
+              onPress={handleStartSession}
+              style={{ padding: 8 }}
+              disabled={liveActionLoading || isLive}
+            >
+              {liveActionLoading ? (
+                <ActivityIndicator size="small" color={liveColor} />
+              ) : (
+                <Ionicons
+                  name="radio-outline"
+                  size={24}
+                  color={isLive ? "#ccc" : liveColor}
+                />
+              )}
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={shareInviteLink} style={{ padding: 8 }}>
             <Ionicons name="share-outline" size={24} color={myBubbleColor} />
           </TouchableOpacity>
@@ -200,9 +271,14 @@ export default function RoomScreen() {
   }, [
     navigation,
     roomName,
+    isCreator,
+    isLive,
+    liveActionLoading,
     shareInviteLink,
     navigateToSettings,
+    handleStartSession,
     myBubbleColor,
+    liveColor,
   ]);
 
   const getCurrentUser = useCallback(async () => {
@@ -265,11 +341,19 @@ export default function RoomScreen() {
     getCurrentUser();
     fetchMessages();
     fetchRoomDetails();
-    const unsubscribe = subscribeToMessages();
+    const unsubMessages = subscribeToMessages();
+    const unsubLive = subscribeToLiveState();
     return () => {
-      unsubscribe();
+      unsubMessages();
+      unsubLive();
     };
-  }, [getCurrentUser, fetchMessages, fetchRoomDetails, subscribeToMessages]);
+  }, [
+    getCurrentUser,
+    fetchMessages,
+    fetchRoomDetails,
+    subscribeToMessages,
+    subscribeToLiveState,
+  ]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !userId || !roomId || sending) return;
@@ -335,7 +419,6 @@ export default function RoomScreen() {
   const renderMessage = ({ item }: { item: MessageWithProfile }) => {
     const isOwnMessage = item.user_id === userId;
 
-    // Get initial for avatar
     const initial = item.profiles?.display_name
       ? item.profiles.display_name.charAt(0).toUpperCase()
       : "?";
@@ -349,7 +432,6 @@ export default function RoomScreen() {
           isOwnMessage ? styles.rowReverse : styles.row,
         ]}
       >
-        {/* Avatar Circle (Only for others) */}
         {!isOwnMessage && (
           <View style={[styles.avatar, { backgroundColor: otherBubbleColor }]}>
             {avatarUrl ? (
@@ -373,7 +455,6 @@ export default function RoomScreen() {
               : [styles.otherMessage, { backgroundColor: otherBubbleColor }],
           ]}
         >
-          {/* Display Name (only for others) */}
           {!isOwnMessage && item.profiles?.display_name && (
             <ThemedText style={styles.senderName}>
               {item.profiles.display_name}
@@ -384,7 +465,6 @@ export default function RoomScreen() {
             <ThemedText
               style={[
                 styles.messageText,
-                // Fix: Force white text for own messages, standard theme text for others
                 isOwnMessage ? { color: "#ffffff" } : { color: textColor },
               ]}
             >
@@ -430,6 +510,21 @@ export default function RoomScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Live Session Banner — shown for all members when a session is active */}
+      {isLive && (
+        <TouchableOpacity
+          style={styles.liveBanner}
+          onPress={handleJoinSession}
+          activeOpacity={0.85}
+        >
+          <View style={styles.liveDot} />
+          <ThemedText style={styles.liveBannerText}>
+            Live session in progress — tap to join
+          </ThemedText>
+          <Ionicons name="chevron-forward" size={16} color="#fff" />
+        </TouchableOpacity>
+      )}
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior="padding"
@@ -502,6 +597,27 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  liveBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e63946",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#fff",
+    opacity: 0.9,
+  },
+  liveBannerText: {
+    flex: 1,
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
   },
   messageList: {
     paddingHorizontal: 16,

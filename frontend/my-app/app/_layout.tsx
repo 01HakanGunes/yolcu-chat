@@ -10,11 +10,15 @@ import { View, ActivityIndicator, Alert } from "react-native";
 import * as Linking from "expo-linking";
 import "react-native-reanimated";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { registerGlobals } from "@livekit/react-native";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePushToken } from "@/hooks/use-push-token";
 import { supabase } from "@/lib/supabase";
 import { Session } from "@supabase/supabase-js";
+
+// Initialize LiveKit WebRTC globals — must be called before any LiveKit code runs
+registerGlobals();
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",

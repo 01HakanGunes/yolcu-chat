@@ -37,6 +37,14 @@ export default function ChatLayout() {
           title: "Room Settings",
         }}
       />
+      <Stack.Screen
+        name="room/[id]/live"
+        options={{
+          title: "Live Session",
+          presentation: "fullScreenModal",
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
