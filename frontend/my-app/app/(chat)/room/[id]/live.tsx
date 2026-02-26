@@ -357,7 +357,13 @@ export default function LiveScreen() {
     const start = async () => {
       await AudioSession.configureAudio({
         android: {
+          // Use communication preset for proper WebRTC audio (echo cancellation, etc.)
           audioTypeOptions: AndroidAudioTypePresets.communication,
+          // Route to speaker first — earpiece is silent on emulators and wrong for group calls
+          preferredOutputList: ["speaker", "bluetooth", "headset", "earpiece"],
+        },
+        ios: {
+          defaultOutput: "speaker",
         },
       });
       await AudioSession.startAudioSession();
