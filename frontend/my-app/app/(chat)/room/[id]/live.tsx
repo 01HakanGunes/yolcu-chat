@@ -1,16 +1,17 @@
 // Live session screen — full-screen modal using LiveKit WebRTC
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   StyleSheet,
   View,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
   ActivityIndicator,
   Alert,
   SafeAreaView,
   StatusBar,
   Platform,
+  type ViewStyle,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,22 +25,26 @@ import {
   useParticipants,
   TrackReferenceOrPlaceholder,
 } from "@livekit/react-native";
-import { Track, RoomEvent } from "livekit-client";
+import { Track } from "livekit-client";
 
 import { ThemedText } from "@/components/themed-text";
 import { supabase } from "@/lib/supabase";
+
+const TILE_GAP = 6;
 
 // --- PARTICIPANT TILE ---
 function ParticipantTile({
   trackRef,
   name,
+  tileStyle,
 }: {
   trackRef: TrackReferenceOrPlaceholder;
   name: string;
+  tileStyle: ViewStyle;
 }) {
   if (isTrackReference(trackRef)) {
     return (
-      <View style={styles.tile}>
+      <View style={[styles.tile, tileStyle]}>
         <VideoTrack trackRef={trackRef} style={styles.videoTrack} />
         <View style={styles.nameTag}>
           <ThemedText style={styles.nameTagText} numberOfLines={1}>
@@ -52,7 +57,7 @@ function ParticipantTile({
 
   // Placeholder — participant has no video (audio only or not yet publishing)
   return (
-    <View style={[styles.tile, styles.tilePlaceholder]}>
+    <View style={[styles.tile, styles.tilePlaceholder, tileStyle]}>
       <View style={styles.avatarCircle}>
         <ThemedText style={styles.avatarLetter}>
           {name.charAt(0).toUpperCase()}
@@ -173,15 +178,47 @@ function RoomContent({
     [participants],
   );
 
-  const renderTile = ({
-    item,
-  }: {
-    item: TrackReferenceOrPlaceholder;
-  }) => {
-    const identity = item.participant.identity;
-    const name = item.participant.name ?? getParticipantName(identity);
-    return <ParticipantTile trackRef={item} name={name} />;
-  };
+  // Compute dynamic tile sizes based on participant count.
+  // The grid area is measured via onLayout; tiles fill the space evenly.
+  const [gridHeight, setGridHeight] = useState(0);
+  const [gridWidth, setGridWidth] = useState(0);
+
+  const tileStyle = useMemo((): ViewStyle => {
+    const count = tracks.length;
+    if (count === 0 || gridWidth === 0 || gridHeight === 0) {
+      return { width: "100%", height: "100%" };
+    }
+
+    // Determine grid layout: columns and rows
+    let cols: number;
+    let rows: number;
+
+    if (count === 1) {
+      cols = 1;
+      rows = 1;
+    } else if (count === 2) {
+      cols = 1;
+      rows = 2;
+    } else if (count <= 4) {
+      cols = 2;
+      rows = 2;
+    } else if (count <= 6) {
+      cols = 2;
+      rows = 3;
+    } else {
+      cols = 2;
+      rows = Math.ceil(count / 2);
+    }
+
+    // padding: TILE_GAP/2 each side = TILE_GAP total, plus (cols-1) gaps
+    const tileW = (gridWidth - TILE_GAP * cols) / cols;
+    const tileH = (gridHeight - TILE_GAP * rows) / rows;
+
+    return { width: tileW, height: tileH };
+  }, [tracks.length, gridWidth, gridHeight]);
+
+  // Whether the grid should scroll (more than 6 participants)
+  const shouldScroll = tracks.length > 6;
 
   return (
     <SafeAreaView style={styles.roomContainer}>
@@ -199,23 +236,54 @@ function RoomContent({
       </View>
 
       {/* Participant grid */}
-      <FlatList
-        data={tracks}
-        renderItem={renderTile}
-        keyExtractor={(item) =>
-          `${item.participant.identity}-${item.source}`
-        }
-        numColumns={2}
-        contentContainerStyle={styles.grid}
-        ListEmptyComponent={
+      <View
+        style={styles.gridContainer}
+        onLayout={(e) => {
+          setGridWidth(e.nativeEvent.layout.width);
+          setGridHeight(e.nativeEvent.layout.height);
+        }}
+      >
+        {tracks.length === 0 ? (
           <View style={styles.emptyState}>
             <ActivityIndicator size="large" color="#fff" />
             <ThemedText style={styles.emptyText}>
               Waiting for participants...
             </ThemedText>
           </View>
-        }
-      />
+        ) : shouldScroll ? (
+          <ScrollView contentContainerStyle={styles.grid}>
+            {tracks.map((trackRef) => {
+              const identity = trackRef.participant.identity;
+              const name =
+                trackRef.participant.name ?? getParticipantName(identity);
+              return (
+                <ParticipantTile
+                  key={`${identity}-${trackRef.source}`}
+                  trackRef={trackRef}
+                  name={name}
+                  tileStyle={tileStyle}
+                />
+              );
+            })}
+          </ScrollView>
+        ) : (
+          <View style={[styles.grid, styles.gridFill]}>
+            {tracks.map((trackRef) => {
+              const identity = trackRef.participant.identity;
+              const name =
+                trackRef.participant.name ?? getParticipantName(identity);
+              return (
+                <ParticipantTile
+                  key={`${identity}-${trackRef.source}`}
+                  trackRef={trackRef}
+                  name={name}
+                  tileStyle={tileStyle}
+                />
+              );
+            })}
+          </View>
+        )}
+      </View>
 
       {/* Controls */}
       <View style={styles.controls}>
@@ -461,17 +529,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignContent: "center",
+    padding: TILE_GAP / 2,
+    gap: TILE_GAP,
+  },
+  gridFill: {
     flex: 1,
-    padding: 4,
+  },
+  gridContainer: {
+    flex: 1,
   },
   tile: {
-    flex: 1,
-    margin: 4,
-    aspectRatio: 3 / 4,
     borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "#1a1a1a",
-    maxWidth: "50%",
   },
   tilePlaceholder: {
     justifyContent: "center",
@@ -513,7 +587,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 80,
     gap: 16,
   },
   emptyText: {

@@ -116,6 +116,8 @@ function FileAttachment({
   );
 }
 
+const PAGE_SIZE = 50;
+
 export default function RoomScreen() {
   const { id: roomId } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
@@ -123,6 +125,8 @@ export default function RoomScreen() {
   const [messages, setMessages] = useState<MessageWithProfile[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const [sending, setSending] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -288,6 +292,7 @@ export default function RoomScreen() {
     setUserId(user?.id || null);
   }, []);
 
+  // Fetch the most recent page of messages (newest first for inverted FlatList)
   const fetchMessages = useCallback(async () => {
     if (!roomId) return;
 
@@ -295,12 +300,47 @@ export default function RoomScreen() {
       .from("messages")
       .select("*, profiles(display_name, avatar_url)")
       .eq("room_id", roomId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false })
+      .limit(PAGE_SIZE);
 
-    if (error) console.error("Error fetching messages:", error);
-    else setMessages(data || []);
+    if (error) {
+      console.error("Error fetching messages:", error);
+    } else {
+      const msgs = data ?? [];
+      setMessages(msgs);
+      setHasOlderMessages(msgs.length >= PAGE_SIZE);
+    }
     setLoading(false);
   }, [roomId]);
+
+  // Load older messages before the oldest message currently in state
+  const loadOlderMessages = useCallback(async () => {
+    if (!roomId || loadingOlder || !hasOlderMessages) return;
+
+    const oldestMessage = messages[messages.length - 1];
+    if (!oldestMessage) return;
+
+    setLoadingOlder(true);
+
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*, profiles(display_name, avatar_url)")
+      .eq("room_id", roomId)
+      .lt("created_at", oldestMessage.created_at)
+      .order("created_at", { ascending: false })
+      .limit(PAGE_SIZE);
+
+    if (error) {
+      console.error("Error fetching older messages:", error);
+    } else {
+      const older = data ?? [];
+      if (older.length < PAGE_SIZE) {
+        setHasOlderMessages(false);
+      }
+      setMessages((prev) => [...prev, ...older]);
+    }
+    setLoadingOlder(false);
+  }, [roomId, messages, loadingOlder, hasOlderMessages]);
 
   const subscribeToMessages = useCallback(() => {
     if (!roomId) return () => {};
@@ -323,11 +363,8 @@ export default function RoomScreen() {
             .eq("id", newMsg.user_id)
             .single();
 
-          setMessages((prev) => [...prev, { ...newMsg, profiles: profile }]);
-          setTimeout(
-            () => flatListRef.current?.scrollToEnd({ animated: true }),
-            100,
-          );
+          // Prepend: newest messages are at index 0 (inverted FlatList)
+          setMessages((prev) => [{ ...newMsg, profiles: profile }, ...prev]);
         },
       )
       .subscribe();
@@ -536,8 +573,17 @@ export default function RoomScreen() {
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messageList}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
+          inverted
+          onEndReached={loadOlderMessages}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loadingOlder ? (
+              <ActivityIndicator
+                size="small"
+                color={myBubbleColor}
+                style={styles.olderLoader}
+              />
+            ) : null
           }
         />
 
@@ -621,8 +667,8 @@ const styles = StyleSheet.create({
   },
   messageList: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
-    paddingTop: 12,
+    paddingTop: 20,
+    paddingBottom: 12,
     gap: 12,
   },
   messageRow: {
@@ -731,5 +777,8 @@ const styles = StyleSheet.create({
   fileName: {
     fontSize: 13,
     flexShrink: 1,
+  },
+  olderLoader: {
+    paddingVertical: 16,
   },
 });
