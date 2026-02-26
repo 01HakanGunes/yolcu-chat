@@ -304,6 +304,7 @@ export default function LiveScreen() {
       setIsCreator(room?.created_by === user?.id);
 
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
       const response = await fetch(
         `${supabaseUrl}/functions/v1/livekit-token`,
         {
@@ -311,6 +312,7 @@ export default function LiveScreen() {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
+            apikey: supabaseKey,
           },
           body: JSON.stringify({ room_id: roomId }),
         },
