@@ -83,6 +83,7 @@ function RoomContent({
   const [micEnabled, setMicEnabled] = useState(true);
   const [camEnabled, setCamEnabled] = useState(true);
   const [ending, setEnding] = useState(false);
+  const facingModeRef = useRef<"user" | "environment">("user");
 
   // Auto-leave when creator ends the session (is_live goes false via Realtime)
   useEffect(() => {
@@ -127,10 +128,13 @@ function RoomContent({
     const publication = room.localParticipant.getTrackPublication(
       Track.Source.Camera,
     );
-    if (publication?.track) {
-      // @ts-ignore — switchCamera is available on the native track
-      await publication.track.switchCamera();
-    }
+    if (!publication?.track) return;
+
+    const nextFacing =
+      facingModeRef.current === "user" ? "environment" : "user";
+    facingModeRef.current = nextFacing;
+
+    await publication.track.restartTrack({ facingMode: nextFacing });
   }, [room]);
 
   const handleLeave = useCallback(async () => {
