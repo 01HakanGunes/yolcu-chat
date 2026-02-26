@@ -17,12 +17,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
   AudioSession,
+  AndroidAudioTypePresets,
   LiveKitRoom,
   useTracks,
   VideoTrack,
   isTrackReference,
   useRoomContext,
   useParticipants,
+  useIOSAudioManagement,
   TrackReferenceOrPlaceholder,
 } from "@livekit/react-native";
 import { Track } from "livekit-client";
@@ -84,7 +86,14 @@ function RoomContent({
 }) {
   const room = useRoomContext();
   const participants = useParticipants();
-  const tracks = useTracks([Track.Source.Camera]);
+
+  // Let the SDK manage iOS audio configuration automatically (speaker, earpiece, etc.)
+  useIOSAudioManagement(room, true);
+
+  const tracks = useTracks(
+    [{ source: Track.Source.Camera, withPlaceholder: true }],
+    { onlySubscribed: false },
+  );
   const [micEnabled, setMicEnabled] = useState(true);
   const [camEnabled, setCamEnabled] = useState(true);
   const [ending, setEnding] = useState(false);
@@ -341,9 +350,19 @@ export default function LiveScreen() {
   const [error, setError] = useState<string | null>(null);
   const connected = useRef(false);
 
-  // Start audio session on mount, stop on unmount
+  // Configure and start audio session on mount, stop on unmount.
+  // configureAudio sets the correct audio mode for voice communication,
+  // which is required for multi-peer WebRTC calls on both Android and iOS.
   useEffect(() => {
-    AudioSession.startAudioSession();
+    const start = async () => {
+      await AudioSession.configureAudio({
+        android: {
+          audioTypeOptions: AndroidAudioTypePresets.communication,
+        },
+      });
+      await AudioSession.startAudioSession();
+    };
+    start();
     return () => {
       AudioSession.stopAudioSession();
     };

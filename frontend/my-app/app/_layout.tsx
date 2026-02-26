@@ -17,7 +17,8 @@ import { usePushToken } from "@/hooks/use-push-token";
 import { supabase } from "@/lib/supabase";
 import { Session } from "@supabase/supabase-js";
 
-// Initialize LiveKit WebRTC globals — must be called before any LiveKit code runs
+// Register LiveKit WebRTC polyfills — must run once before any LiveKit code.
+// NOTE: AudioSession is NOT started here; it is managed per-room in live.tsx.
 registerGlobals();
 
 export const unstable_settings = {
