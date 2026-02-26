@@ -361,24 +361,25 @@ export default function LiveScreen() {
   }
 
   return (
-    <LiveKitRoom
-      serverUrl={serverUrl}
-      token={token}
-      connect={true}
-      audio={true}
-      video={true}
-      onConnected={() => {
-        connected.current = true;
-      }}
-      onDisconnected={handleDisconnect}
-      style={styles.lkRoom}
-    >
-      <RoomContent
-        roomId={roomId!}
-        isCreator={isCreator}
-        onLeave={handleDisconnect}
-      />
-    </LiveKitRoom>
+    <View style={styles.lkRoom}>
+      <LiveKitRoom
+        serverUrl={serverUrl}
+        token={token}
+        connect={true}
+        audio={true}
+        video={true}
+        onConnected={() => {
+          connected.current = true;
+        }}
+        onDisconnected={handleDisconnect}
+      >
+        <RoomContent
+          roomId={roomId!}
+          isCreator={isCreator}
+          onLeave={handleDisconnect}
+        />
+      </LiveKitRoom>
+    </View>
   );
 }
 

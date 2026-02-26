@@ -50,7 +50,7 @@ This mobile app is a dedicated platform designed for building communities around
 
    ```env
    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
    ```
 
 3. **Firebase Push Notifications Setup**
