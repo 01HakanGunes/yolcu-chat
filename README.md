@@ -84,3 +84,7 @@ This mobile app is a dedicated platform designed for building communities around
 - `app/`: Expo Router pages (Auth, Tabs, etc.)
 - `lib/`: Supabase client configuration
 - `components/`: Reusable UI components
+
+## Note
+Java JDK-17 and android studio is needed for development build.
+Add sdk to environment variables.
