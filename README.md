@@ -42,7 +42,7 @@ This mobile app is a dedicated platform designed for building communities around
 
    ```bash
    cd frontend/my-app
-   npm install
+   npx expo install
    ```
 
 2. **Environment Setup**
