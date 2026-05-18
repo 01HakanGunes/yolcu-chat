@@ -74,9 +74,9 @@ This mobile app is a dedicated platform designed for building communities around
    npx expo start
    ```
 
-6. **EAS Build**
+6. **EAS Build (Apk File)**
    ```bash
-   npx eas build
+   npx eas build -p android --profile preview
    ```
 
 ## 📂 Structure
