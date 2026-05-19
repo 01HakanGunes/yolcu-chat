@@ -14,10 +14,11 @@ This mobile app is a dedicated platform designed for building communities around
 - **Push Notifications:** Stay updated with new messages and activity via integrated cross-platform notifications.
 - **Room Management:** Full control to create rooms and customize settings for your community.
 - **User Profiles:** Personalized identities to connect with like-minded individuals.
+- **Video Calls:** Host and join real-time video calls to collaborate or hang out with your community.
+- **File Sharing:** Securely exchange documents, project files, and resources within chat rooms.
 
 ### Future Enhancements
 
-- **Media Sharing:** Capability to share photos and videos directly within chat rooms to showcase hobby projects.
 - **Event Scheduling:** Tools for organizing meetups or scheduled hobby sessions within room communities.
 - **Advanced Moderation:** Expanded roles and permissions for community leaders to manage discussions.
 - **Interest Matching:** Smart suggestions for new rooms based on your selected interests and profile.
