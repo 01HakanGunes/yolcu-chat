@@ -26,11 +26,11 @@ This mobile app is a dedicated platform designed for building communities around
 ## 📸 Screenshots
 
 <p align="center">
-  <img src="docs/assets/screenshots/rooms.jpeg" width="22%" alt="Rooms Screen" />
-  <img src="docs/assets/screenshots/chat.jpeg" width="22%" alt="Chat Screen" />
-  <img src="docs/assets/screenshots/live-call.jpeg" width="22%" alt="Live Call" />
-  <img src="docs/assets/screenshots/room-settings.jpeg" width="22%" alt="Room Settings" />
-  <img src="docs/assets/screenshots/profile.jpeg" width="22%" alt="Profile Screen" />
+  <img src="docs/assets/screenshots/rooms.jpeg" width="30%" alt="Rooms Screen" />
+  <img src="docs/assets/screenshots/chat.jpeg" width="30%" alt="Chat Screen" />
+  <img src="docs/assets/screenshots/live-call.jpeg" width="30%" alt="Live Call" />
+  <img src="docs/assets/screenshots/room-settings.jpeg" width="30%" alt="Room Settings" />
+  <img src="docs/assets/screenshots/profile.jpeg" width="30%" alt="Profile Screen" />
 </p>
 
 ## 🚀 Tech Stack
